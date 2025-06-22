@@ -115,13 +115,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
               <div className="flex items-center gap-x-4">
                 {location.pathname === '/tasks' && (
-                  <Link
-                    to="/tasks/new"
+                  <button
+                    onClick={() => {
+                      // Dispatch custom event to open modal
+                      window.dispatchEvent(new CustomEvent('openNewTaskModal'));
+                    }}
                     className="btn-primary"
                   >
                     <Plus size={16} className="mr-2" />
                     Nueva Tarea
-                  </Link>
+                  </button>
                 )}
               </div>
             </div>

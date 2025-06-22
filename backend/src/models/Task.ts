@@ -79,7 +79,7 @@ export class TaskModel {
           } else if (this.changes === 0) {
             resolve(null);
           } else {
-            this.get('SELECT * FROM tasks WHERE id = ?', [id], (err: any, row: any) => {
+            db.get('SELECT * FROM tasks WHERE id = ?', [id], (err: any, row: any) => {
               if (err) {
                 reject(err);
               } else {

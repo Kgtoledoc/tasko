@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -9,7 +8,8 @@ import {
   CheckCircle,
   Clock,
   AlertTriangle,
-  Calendar
+  Calendar,
+  X
 } from 'lucide-react';
 import { taskApi } from '../services/api';
 import { Task, TaskFilters } from '../types';
@@ -21,6 +21,15 @@ const Tasks: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<TaskFilters>({});
   const [showFilters, setShowFilters] = useState(false);
+  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    priority: 'medium' as Task['priority'],
+    status: 'pending' as Task['status'],
+    category: ''
+  });
 
   useEffect(() => {
     fetchTasks();
@@ -29,6 +38,18 @@ const Tasks: React.FC = () => {
   useEffect(() => {
     applyFilters();
   }, [tasks, filters]);
+
+  useEffect(() => {
+    const handleOpenModal = () => {
+      setShowNewTaskModal(true);
+    };
+
+    window.addEventListener('openNewTaskModal', handleOpenModal);
+    
+    return () => {
+      window.removeEventListener('openNewTaskModal', handleOpenModal);
+    };
+  }, []);
 
   const fetchTasks = async () => {
     try {
@@ -93,6 +114,41 @@ const Tasks: React.FC = () => {
     }
   };
 
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newTask.title.trim()) {
+      toast.error('El título es obligatorio');
+      return;
+    }
+
+    try {
+      await taskApi.create({
+        title: newTask.title,
+        description: newTask.description,
+        dueDate: newTask.dueDate || undefined,
+        priority: newTask.priority,
+        status: newTask.status,
+        category: newTask.category || undefined
+      });
+      
+      toast.success('Tarea creada exitosamente');
+      setShowNewTaskModal(false);
+      setNewTask({
+        title: '',
+        description: '',
+        dueDate: '',
+        priority: 'medium',
+        status: 'pending',
+        category: ''
+      });
+      fetchTasks();
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error('Error al crear la tarea');
+    }
+  };
+
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'completed':
@@ -146,10 +202,13 @@ const Tasks: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Tareas</h1>
           <p className="text-gray-600">Gestiona tus tareas y proyectos</p>
         </div>
-        <Link to="/tasks/new" className="btn-primary">
+        <button 
+          onClick={() => setShowNewTaskModal(true)} 
+          className="btn-primary"
+        >
           <Plus size={16} className="mr-2" />
           Nueva Tarea
-        </Link>
+        </button>
       </div>
 
       {/* Filters */}
@@ -219,26 +278,25 @@ const Tasks: React.FC = () => {
 
       {/* Tasks List */}
       <div className="card">
-        <div className="card-header">
-          <h3 className="text-lg font-medium text-gray-900">
-            Tareas ({filteredTasks.length})
-          </h3>
-        </div>
         <div className="card-body">
           {filteredTasks.length === 0 ? (
             <div className="text-center py-8">
-              <CheckCircle className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No hay tareas</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {tasks.length === 0 ? 'Comienza creando tu primera tarea.' : 'No se encontraron tareas con los filtros aplicados.'}
+              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No hay tareas</h3>
+              <p className="text-gray-600 mb-4">
+                {tasks.length === 0 
+                  ? 'Comienza creando tu primera tarea'
+                  : 'No hay tareas que coincidan con los filtros aplicados'
+                }
               </p>
               {tasks.length === 0 && (
-                <div className="mt-6">
-                  <Link to="/tasks/new" className="btn-primary">
-                    <Plus size={16} className="mr-2" />
-                    Crear Tarea
-                  </Link>
-                </div>
+                <button 
+                  onClick={() => setShowNewTaskModal(true)}
+                  className="btn-primary"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Crear primera tarea
+                </button>
               )}
             </div>
           ) : (
@@ -246,56 +304,66 @@ const Tasks: React.FC = () => {
               {filteredTasks.map((task) => (
                 <div
                   key={task.id}
-                  className={`p-4 border rounded-lg transition-colors ${
-                    isOverdue(task) 
-                      ? 'border-danger-200 bg-danger-50' 
-                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                  className={`p-4 border rounded-lg ${
+                    isOverdue(task) ? 'border-red-200 bg-red-50' : 'border-gray-200'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(task.status)}
-                        <h4 className={`text-sm font-medium ${
-                          isOverdue(task) ? 'text-danger-900' : 'text-gray-900'
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className={`font-medium ${
+                          task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
                         }`}>
                           {task.title}
-                        </h4>
+                        </h3>
+                        {isOverdue(task) && (
+                          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                            Vencida
+                          </span>
+                        )}
                       </div>
                       
                       {task.description && (
-                        <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                        <p className={`text-sm mb-3 ${
+                          task.status === 'completed' ? 'text-gray-400' : 'text-gray-600'
+                        }`}>
                           {task.description}
                         </p>
                       )}
 
-                      <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                        {task.dueDate && (
-                          <div className="flex items-center space-x-1">
-                            <Calendar size={12} />
-                            <span className={isOverdue(task) ? 'text-danger-600 font-medium' : ''}>
-                              {new Date(task.dueDate).toLocaleDateString()}
-                            </span>
-                          </div>
-                        )}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <span className={`text-xs px-2 py-1 rounded ${getStatusColor(task.status)}`}>
+                          {task.status === 'pending' && 'Pendiente'}
+                          {task.status === 'in_progress' && 'En progreso'}
+                          {task.status === 'completed' && 'Completada'}
+                        </span>
+                        
+                        <span className={`text-xs px-2 py-1 rounded ${getPriorityColor(task.priority)}`}>
+                          {task.priority === 'high' && 'Alta'}
+                          {task.priority === 'medium' && 'Media'}
+                          {task.priority === 'low' && 'Baja'}
+                        </span>
+
                         {task.category && (
-                          <span className="bg-gray-100 px-2 py-1 rounded">
+                          <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
                             {task.category}
                           </span>
                         )}
                       </div>
+
+                      {task.dueDate && (
+                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                          <Calendar className="h-4 w-4" />
+                          <span>
+                            Vence: {new Date(task.dueDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <span className={`badge ${getPriorityColor(task.priority)}`}>
-                        {task.priority}
-                      </span>
-                      <span className={`badge ${getStatusColor(task.status)}`}>
-                        {task.status}
-                      </span>
-                      
+                    <div className="flex items-center gap-2 ml-4">
                       <select
-                        className="text-xs border border-gray-300 rounded px-2 py-1"
+                        className="text-sm border rounded px-2 py-1"
                         value={task.status}
                         onChange={(e) => handleStatusChange(task.id, e.target.value as Task['status'])}
                       >
@@ -304,16 +372,10 @@ const Tasks: React.FC = () => {
                         <option value="completed">Completada</option>
                       </select>
 
-                      <Link
-                        to={`/tasks/${task.id}/edit`}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <Edit size={16} />
-                      </Link>
-
                       <button
                         onClick={() => handleDeleteTask(task.id)}
-                        className="text-gray-400 hover:text-danger-600"
+                        className="text-red-600 hover:text-red-800 p-1"
+                        title="Eliminar tarea"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -325,6 +387,110 @@ const Tasks: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* New Task Modal */}
+      {showNewTaskModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Nueva Tarea</h2>
+              <button
+                onClick={() => setShowNewTaskModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTask} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Título *
+                </label>
+                <input
+                  type="text"
+                  className="input w-full"
+                  value={newTask.title}
+                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  placeholder="Título de la tarea"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descripción
+                </label>
+                <textarea
+                  className="input w-full"
+                  rows={3}
+                  value={newTask.description}
+                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                  placeholder="Descripción de la tarea"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha de vencimiento
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="input w-full"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Prioridad
+                  </label>
+                  <select
+                    className="input w-full"
+                    value={newTask.priority}
+                    onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as Task['priority'] })}
+                  >
+                    <option value="low">Baja</option>
+                    <option value="medium">Media</option>
+                    <option value="high">Alta</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Categoría
+                </label>
+                <input
+                  type="text"
+                  className="input w-full"
+                  value={newTask.category}
+                  onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
+                  placeholder="Ej: Trabajo, Personal, Salud"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowNewTaskModal(false)}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  Crear Tarea
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
