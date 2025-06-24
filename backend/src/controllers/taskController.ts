@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import { TaskModel } from '../models/Task';
+import taskService from '../services/taskService';
 import { Task } from '../utils/database';
 
 export class TaskController {
   // Get all tasks
   static async getAllTasks(req: Request, res: Response): Promise<void> {
     try {
-      const tasks = await TaskModel.findAll();
+      const tasks = await taskService.getAll();
       res.json({
         success: true,
         data: tasks,
@@ -25,7 +25,7 @@ export class TaskController {
   static async getTaskById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const task = await TaskModel.findById(id);
+      const task = await taskService.getById(id);
       
       if (!task) {
         res.status(404).json({
@@ -88,7 +88,7 @@ export class TaskController {
         category: category?.trim()
       };
 
-      const newTask = await TaskModel.create(taskData);
+      const newTask = await taskService.create(taskData);
       
       res.status(201).json({
         success: true,
@@ -127,7 +127,7 @@ export class TaskController {
         return;
       }
 
-      const updatedTask = await TaskModel.update(id, updates);
+      const updatedTask = await taskService.update(id, updates);
       
       if (!updatedTask) {
         res.status(404).json({
@@ -155,7 +155,7 @@ export class TaskController {
   static async deleteTask(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const deleted = await TaskModel.delete(id);
+      const deleted = await taskService.delete(id);
       
       if (!deleted) {
         res.status(404).json({
@@ -191,7 +191,7 @@ export class TaskController {
         return;
       }
 
-      const tasks = await TaskModel.findByStatus(status as Task['status']);
+      const tasks = await taskService.getByStatus(status as Task['status']);
       
       res.json({
         success: true,
@@ -210,7 +210,7 @@ export class TaskController {
   // Get overdue tasks
   static async getOverdueTasks(req: Request, res: Response): Promise<void> {
     try {
-      const tasks = await TaskModel.findOverdue();
+      const tasks = await taskService.getOverdue();
       
       res.json({
         success: true,
@@ -229,7 +229,7 @@ export class TaskController {
   // Get tasks with reminders
   static async getTasksWithReminders(req: Request, res: Response): Promise<void> {
     try {
-      const tasks = await TaskModel.findWithReminders();
+      const tasks = await taskService.getWithReminders();
       
       res.json({
         success: true,

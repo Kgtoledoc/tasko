@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import aiService from '../services/aiService';
-import { TaskModel } from '../models/Task';
-import { Task } from '../utils/database';
+import taskService from '../services/taskService';
 
 class AIController {
   async processCommand(req: Request, res: Response) {
@@ -23,22 +22,14 @@ class AIController {
       switch (aiResponse.action) {
         case 'create_task':
           if (aiResponse.data && aiResponse.data.title) {
-            const taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
-              title: aiResponse.data.title,
-              description: aiResponse.data.description,
-              dueDate: aiResponse.data.dueDate,
-              priority: aiResponse.data.priority || 'medium',
-              status: aiResponse.data.status || 'pending',
-              category: aiResponse.data.category
-            };
-            result = await TaskModel.create(taskData);
+            result = await taskService.create(aiResponse.data);
             aiResponse.message = `Tarea "${aiResponse.data.title}" creada exitosamente`;
           }
           break;
           
         case 'list_tasks':
-          const tasks = await TaskModel.findAll();
-          const pendingTasks = tasks.filter((task: Task) => task.status !== 'completed');
+          const tasks = await taskService.getAll();
+          const pendingTasks = tasks.filter(task => task.status !== 'completed');
           result = pendingTasks;
           aiResponse.message = `Tienes ${pendingTasks.length} tareas pendientes`;
           break;
