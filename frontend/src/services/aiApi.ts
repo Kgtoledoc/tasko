@@ -64,4 +64,5 @@ class AIApi {
   }
 }
 
-export default new AIApi(); 
+const aiApi = new AIApi();
+export default aiApi; 

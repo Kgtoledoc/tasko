@@ -16,6 +16,14 @@ interface TaskCommand {
   category?: string;
 }
 
+interface OpenAIResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
+
 class AIService {
   private apiKey: string;
   private baseUrl: string;
@@ -64,7 +72,7 @@ Responde solo con el JSON válido:`;
   }
 
   private async callOpenAI(prompt: string): Promise<string> {
-    const response = await axios.post(
+    const response = await axios.post<OpenAIResponse>(
       this.baseUrl,
       {
         model: 'gpt-3.5-turbo',

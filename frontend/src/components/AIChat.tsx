@@ -73,7 +73,6 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, onTaskCreated }) => {
     addMessage(userMessage, 'user');
 
     // Add loading message
-    const loadingMessageId = Date.now().toString();
     addMessage('Pensando...', 'ai', true);
 
     setIsLoading(true);

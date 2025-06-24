@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Search, 
   Filter, 
-  Edit, 
   Trash2, 
   CheckCircle,
   Clock,
@@ -35,9 +34,36 @@ const Tasks: React.FC = () => {
     fetchTasks();
   }, []);
 
+  const applyFilters = useCallback(() => {
+    let filtered = [...tasks];
+
+    if (filters.status) {
+      filtered = filtered.filter(task => task.status === filters.status);
+    }
+
+    if (filters.priority) {
+      filtered = filtered.filter(task => task.priority === filters.priority);
+    }
+
+    if (filters.category) {
+      filtered = filtered.filter(task => 
+        task.category?.toLowerCase().includes(filters.category!.toLowerCase())
+      );
+    }
+
+    if (filters.search) {
+      filtered = filtered.filter(task =>
+        task.title.toLowerCase().includes(filters.search!.toLowerCase()) ||
+        task.description?.toLowerCase().includes(filters.search!.toLowerCase())
+      );
+    }
+
+    setFilteredTasks(filtered);
+  }, [tasks, filters]);
+
   useEffect(() => {
     applyFilters();
-  }, [tasks, filters]);
+  }, [applyFilters]);
 
   useEffect(() => {
     const handleOpenModal = () => {
@@ -67,33 +93,6 @@ const Tasks: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const applyFilters = () => {
-    let filtered = [...tasks];
-
-    if (filters.status) {
-      filtered = filtered.filter(task => task.status === filters.status);
-    }
-
-    if (filters.priority) {
-      filtered = filtered.filter(task => task.priority === filters.priority);
-    }
-
-    if (filters.category) {
-      filtered = filtered.filter(task => 
-        task.category?.toLowerCase().includes(filters.category!.toLowerCase())
-      );
-    }
-
-    if (filters.search) {
-      filtered = filtered.filter(task =>
-        task.title.toLowerCase().includes(filters.search!.toLowerCase()) ||
-        task.description?.toLowerCase().includes(filters.search!.toLowerCase())
-      );
-    }
-
-    setFilteredTasks(filtered);
   };
 
   const handleStatusChange = async (taskId: string, newStatus: Task['status']) => {
@@ -152,17 +151,6 @@ const Tasks: React.FC = () => {
     } catch (error) {
       console.error('Error creating task:', error);
       toast.error('Error al crear la tarea');
-    }
-  };
-
-  const getStatusIcon = (status: Task['status']) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-success-600" />;
-      case 'in_progress':
-        return <Clock className="h-4 w-4 text-warning-600" />;
-      default:
-        return <AlertTriangle className="h-4 w-4 text-gray-400" />;
     }
   };
 
