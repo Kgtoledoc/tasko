@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { initializeDatabase } from './utils/database';
 import taskRoutes from './routes/tasks';
 import notificationRoutes from './routes/notifications';
+import aiRoutes from './routes/aiRoutes';
 import { startNotificationService } from './services/notificationService';
 
 // Load environment variables
@@ -27,6 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

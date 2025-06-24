@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, CheckSquare, Bell, Plus, Menu, X } from 'lucide-react';
+import { Home, CheckSquare, Bell, Plus, Menu, X, Bot } from 'lucide-react';
+import AIChat from './AIChat';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home },
@@ -114,6 +116,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </h2>
               </div>
               <div className="flex items-center gap-x-4">
+                {/* AI Assistant Button */}
+                <button
+                  onClick={() => setIsAIChatOpen(true)}
+                  className="btn-primary"
+                  title="Asistente AI"
+                >
+                  <Bot size={16} className="mr-2" />
+                  Asistente
+                </button>
+                
                 {location.pathname === '/tasks' && (
                   <button
                     onClick={() => {
@@ -138,6 +150,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </main>
       </div>
+
+      {/* AI Chat Modal */}
+      <AIChat 
+        isOpen={isAIChatOpen} 
+        onClose={() => setIsAIChatOpen(false)}
+        onTaskCreated={() => {
+          // Refresh tasks if we're on the tasks page
+          if (location.pathname === '/tasks') {
+            window.dispatchEvent(new CustomEvent('refreshTasks'));
+          }
+        }}
+      />
     </div>
   );
 };

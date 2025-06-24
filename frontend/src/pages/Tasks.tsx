@@ -44,10 +44,16 @@ const Tasks: React.FC = () => {
       setShowNewTaskModal(true);
     };
 
+    const handleRefreshTasks = () => {
+      fetchTasks();
+    };
+
     window.addEventListener('openNewTaskModal', handleOpenModal);
+    window.addEventListener('refreshTasks', handleRefreshTasks);
     
     return () => {
       window.removeEventListener('openNewTaskModal', handleOpenModal);
+      window.removeEventListener('refreshTasks', handleRefreshTasks);
     };
   }, []);
 
