@@ -28,16 +28,17 @@ const CreateSlotModal: React.FC<CreateSlotModalProps> = ({
     isRecurring: false,
     recurrencePattern: 'weekly'
   });
+  const [selectedDays, setSelectedDays] = useState<number[]>([1]); // Default to Monday
   const [loading, setLoading] = useState(false);
 
   const daysOfWeek = [
-    { value: 0, label: 'Domingo' },
-    { value: 1, label: 'Lunes' },
-    { value: 2, label: 'Martes' },
-    { value: 3, label: 'Miércoles' },
-    { value: 4, label: 'Jueves' },
-    { value: 5, label: 'Viernes' },
-    { value: 6, label: 'Sábado' }
+    { value: 0, label: 'Domingo', short: 'Dom' },
+    { value: 1, label: 'Lunes', short: 'Lun' },
+    { value: 2, label: 'Martes', short: 'Mar' },
+    { value: 3, label: 'Miércoles', short: 'Mié' },
+    { value: 4, label: 'Jueves', short: 'Jue' },
+    { value: 5, label: 'Viernes', short: 'Vie' },
+    { value: 6, label: 'Sábado', short: 'Sáb' }
   ];
 
   const priorities = [
@@ -52,11 +53,36 @@ const CreateSlotModal: React.FC<CreateSlotModalProps> = ({
     { value: 'monthly', label: 'Mensual' }
   ];
 
+  const handleDayToggle = (dayValue: number) => {
+    setSelectedDays(prev => {
+      if (prev.includes(dayValue)) {
+        // Remove day if already selected
+        return prev.filter(day => day !== dayValue);
+      } else {
+        // Add day if not selected
+        return [...prev, dayValue];
+      }
+    });
+  };
+
+  const handleSelectAllDays = () => {
+    setSelectedDays(daysOfWeek.map(day => day.value));
+  };
+
+  const handleClearAllDays = () => {
+    setSelectedDays([]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.activityName.trim()) {
       toast.error('El nombre de la actividad es requerido');
+      return;
+    }
+
+    if (selectedDays.length === 0) {
+      toast.error('Debes seleccionar al menos un día');
       return;
     }
 
@@ -67,10 +93,21 @@ const CreateSlotModal: React.FC<CreateSlotModalProps> = ({
 
     try {
       setLoading(true);
-      const response = await scheduleApi.createSlot(formData);
       
-      if (response.success) {
-        toast.success('Actividad creada exitosamente');
+      // Create activities for each selected day
+      const promises = selectedDays.map(dayOfWeek => {
+        const slotData = {
+          ...formData,
+          dayOfWeek
+        };
+        return scheduleApi.createSlot(slotData);
+      });
+
+      const results = await Promise.all(promises);
+      const successCount = results.filter(result => result.success).length;
+      
+      if (successCount > 0) {
+        toast.success(`${successCount} actividad${successCount > 1 ? 'es' : ''} creada${successCount > 1 ? 's' : ''} exitosamente`);
         setFormData({
           scheduleId,
           activityName: '',
@@ -82,14 +119,15 @@ const CreateSlotModal: React.FC<CreateSlotModalProps> = ({
           isRecurring: false,
           recurrencePattern: 'weekly'
         });
+        setSelectedDays([1]);
         onSlotCreated();
         onClose();
       } else {
-        toast.error(response.message || 'Error al crear la actividad');
+        toast.error('Error al crear las actividades');
       }
     } catch (error) {
-      console.error('Error creating slot:', error);
-      toast.error('Error al crear la actividad');
+      console.error('Error creating slots:', error);
+      toast.error('Error al crear las actividades');
     } finally {
       setLoading(false);
     }
@@ -154,25 +192,58 @@ const CreateSlotModal: React.FC<CreateSlotModalProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="dayOfWeek" className="block text-sm font-medium text-gray-700 mb-1">
-                    Día de la Semana
-                  </label>
-                  <select
-                    id="dayOfWeek"
-                    value={formData.dayOfWeek}
-                    onChange={(e) => handleInputChange('dayOfWeek', parseInt(e.target.value))}
-                    className="input w-full"
-                  >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Días de la Semana *
+                </label>
+                <div className="space-y-2">
+                  <div className="flex space-x-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllDays}
+                      className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                    >
+                      Seleccionar Todos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearAllDays}
+                      className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     {daysOfWeek.map(day => (
-                      <option key={day.value} value={day.value}>
-                        {day.label}
-                      </option>
+                      <label
+                        key={day.value}
+                        className={`flex items-center p-2 rounded border cursor-pointer transition-colors ${
+                          selectedDays.includes(day.value)
+                            ? 'bg-blue-50 border-blue-200'
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedDays.includes(day.value)}
+                          onChange={() => handleDayToggle(day.value)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                        />
+                        <span className="text-sm font-medium">
+                          {day.short}
+                        </span>
+                      </label>
                     ))}
-                  </select>
+                  </div>
+                  {selectedDays.length > 0 && (
+                    <p className="text-xs text-gray-500">
+                      Seleccionados: {selectedDays.length} día{selectedDays.length > 1 ? 's' : ''}
+                    </p>
+                  )}
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
                     Prioridad
@@ -190,9 +261,7 @@ const CreateSlotModal: React.FC<CreateSlotModalProps> = ({
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-1">
                     Hora de Inicio
@@ -206,20 +275,20 @@ const CreateSlotModal: React.FC<CreateSlotModalProps> = ({
                     required
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-1">
-                    Hora de Fin
-                  </label>
-                  <input
-                    type="time"
-                    id="endTime"
-                    value={formData.endTime}
-                    onChange={(e) => handleInputChange('endTime', e.target.value)}
-                    className="input w-full"
-                    required
-                  />
-                </div>
+              <div>
+                <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-1">
+                  Hora de Fin
+                </label>
+                <input
+                  type="time"
+                  id="endTime"
+                  value={formData.endTime}
+                  onChange={(e) => handleInputChange('endTime', e.target.value)}
+                  className="input w-full"
+                  required
+                />
               </div>
 
               <div className="flex items-center">
@@ -261,15 +330,15 @@ const CreateSlotModal: React.FC<CreateSlotModalProps> = ({
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={loading}
-              className="btn-primary w-full sm:w-auto sm:ml-3"
+              disabled={loading || selectedDays.length === 0}
+              className="btn-primary w-full sm:w-auto sm:ml-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               ) : (
                 <>
                   <Save size={16} className="mr-2" />
-                  Crear Actividad
+                  Crear Actividad{selectedDays.length > 1 ? 'es' : ''}
                 </>
               )}
             </button>
