@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, Plus, Edit, Settings } from 'lucide-react';
 import { scheduleApi } from '../services/scheduleApi';
 import { WeeklySchedule, ScheduleSlot, ScheduleStats } from '../types';
+import CreateScheduleModal from '../components/CreateScheduleModal';
+import CreateSlotModal from '../components/CreateSlotModal';
 import toast from 'react-hot-toast';
 
 const Schedules: React.FC = () => {
@@ -10,6 +12,8 @@ const Schedules: React.FC = () => {
   const [slots, setSlots] = useState<ScheduleSlot[]>([]);
   const [stats, setStats] = useState<ScheduleStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSlotModal, setShowSlotModal] = useState(false);
 
   const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   const timeSlots = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
@@ -60,6 +64,16 @@ const Schedules: React.FC = () => {
   const handleScheduleChange = async (schedule: WeeklySchedule) => {
     setSelectedSchedule(schedule);
     await loadSlots(schedule.id);
+  };
+
+  const handleScheduleCreated = () => {
+    loadData();
+  };
+
+  const handleSlotCreated = () => {
+    if (selectedSchedule) {
+      loadSlots(selectedSchedule.id);
+    }
   };
 
   const getSlotsForDayAndTime = (dayOfWeek: number, time: string) => {
@@ -113,7 +127,7 @@ const Schedules: React.FC = () => {
           <p className="text-gray-600">Gestiona tus actividades recurrentes y horarios</p>
         </div>
         <button
-          onClick={() => {/* TODO: Implement create schedule modal */}}
+          onClick={() => setShowCreateModal(true)}
           className="btn-primary"
         >
           <Plus size={16} className="mr-2" />
@@ -204,7 +218,7 @@ const Schedules: React.FC = () => {
             </h2>
             <div className="flex space-x-2">
               <button
-                onClick={() => {/* TODO: Implement add slot modal */}}
+                onClick={() => setShowSlotModal(true)}
                 className="btn-secondary"
               >
                 <Plus size={16} className="mr-2" />
@@ -286,7 +300,7 @@ const Schedules: React.FC = () => {
             Crea tu primer horario semanal para comenzar a organizar tus actividades
           </p>
           <button
-            onClick={() => {/* TODO: Implement create schedule modal */}}
+            onClick={() => setShowCreateModal(true)}
             className="btn-primary"
           >
             <Plus size={16} className="mr-2" />
@@ -295,7 +309,21 @@ const Schedules: React.FC = () => {
         </div>
       )}
 
-      {/* TODO: Add modals for creating schedules and slots */}
+      {/* Modals */}
+      <CreateScheduleModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onScheduleCreated={handleScheduleCreated}
+      />
+
+      {selectedSchedule && (
+        <CreateSlotModal
+          isOpen={showSlotModal}
+          onClose={() => setShowSlotModal(false)}
+          scheduleId={selectedSchedule.id}
+          onSlotCreated={handleSlotCreated}
+        />
+      )}
     </div>
   );
 };
