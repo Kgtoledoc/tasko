@@ -1,3 +1,4 @@
+// Task types
 export interface Task {
   id: string;
   title: string;
@@ -5,21 +6,62 @@ export interface Task {
   dueDate?: string;
   priority: 'low' | 'medium' | 'high';
   status: 'pending' | 'in_progress' | 'completed';
-  createdAt: string;
-  updatedAt: string;
   reminderTime?: string;
   category?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
+// Notification types
 export interface Notification {
   id: string;
   taskId: string;
-  type: 'reminder' | 'due_date' | 'overdue';
   message: string;
+  type: 'reminder' | 'overdue' | 'due_soon' | 'activity_change';
   isRead: boolean;
   createdAt: string;
 }
 
+// Schedule types
+export interface WeeklySchedule {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScheduleSlot {
+  id: string;
+  scheduleId: string;
+  dayOfWeek: number; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime: string; // HH:MM format
+  endTime: string; // HH:MM format
+  activityName: string;
+  activityDescription?: string;
+  priority: 'low' | 'medium' | 'high';
+  color?: string;
+  isRecurring: boolean;
+  recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecurringTask {
+  id: string;
+  title: string;
+  description?: string;
+  scheduleSlotId: string;
+  recurrencePattern: 'weekly' | 'biweekly' | 'monthly';
+  nextOccurrence: string;
+  lastGenerated: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// API Request/Response types
 export interface CreateTaskRequest {
   title: string;
   description?: string;
@@ -40,7 +82,26 @@ export interface UpdateTaskRequest {
   category?: string;
 }
 
-export interface ApiResponse<T> {
+export interface CreateScheduleRequest {
+  name: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface CreateScheduleSlotRequest {
+  scheduleId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  activityName: string;
+  activityDescription?: string;
+  priority?: 'low' | 'medium' | 'high';
+  color?: string;
+  isRecurring?: boolean;
+  recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+}
+
+export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   message?: string;
@@ -54,8 +115,8 @@ export interface NotificationCount {
 }
 
 export interface TaskFilters {
-  status?: Task['status'];
-  priority?: Task['priority'];
+  status?: 'pending' | 'in_progress' | 'completed';
+  priority?: 'low' | 'medium' | 'high';
   category?: string;
   search?: string;
 }
@@ -66,4 +127,12 @@ export interface TaskStats {
   inProgress: number;
   completed: number;
   overdue: number;
+}
+
+export interface ScheduleStats {
+  totalSchedules: number;
+  activeSchedules: number;
+  totalSlots: number;
+  currentActivity?: ScheduleSlot;
+  nextActivity?: ScheduleSlot;
 } 

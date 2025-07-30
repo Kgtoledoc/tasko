@@ -5,7 +5,8 @@ import {
   AlertTriangle, 
   Clock,
   Trash2,
-  CheckCheck
+  CheckCheck,
+  Settings
 } from 'lucide-react';
 import { notificationApi } from '../services/api';
 import { Notification } from '../types';
@@ -73,10 +74,12 @@ const Notifications: React.FC = () => {
     switch (type) {
       case 'reminder':
         return <Clock className="h-5 w-5 text-warning-600" />;
-      case 'due_date':
+      case 'due_soon':
         return <AlertTriangle className="h-5 w-5 text-danger-600" />;
       case 'overdue':
         return <AlertTriangle className="h-5 w-5 text-danger-600" />;
+      case 'activity_change':
+        return <Settings className="h-5 w-5 text-blue-600" />;
       default:
         return <Bell className="h-5 w-5 text-gray-600" />;
     }
@@ -86,10 +89,12 @@ const Notifications: React.FC = () => {
     switch (type) {
       case 'reminder':
         return 'border-warning-200 bg-warning-50';
-      case 'due_date':
+      case 'due_soon':
         return 'border-danger-200 bg-danger-50';
       case 'overdue':
         return 'border-danger-200 bg-danger-50';
+      case 'activity_change':
+        return 'border-blue-200 bg-blue-50';
       default:
         return 'border-gray-200 bg-white';
     }
@@ -99,10 +104,12 @@ const Notifications: React.FC = () => {
     switch (type) {
       case 'reminder':
         return 'Recordatorio';
-      case 'due_date':
-        return 'Fecha límite';
+      case 'due_soon':
+        return 'Próxima a vencer';
       case 'overdue':
         return 'Vencida';
+      case 'activity_change':
+        return 'Cambio de actividad';
       default:
         return 'Notificación';
     }
@@ -183,8 +190,10 @@ const Notifications: React.FC = () => {
                           <span className={`badge ${
                             notification.type === 'reminder' 
                               ? 'badge-warning' 
-                              : notification.type === 'overdue' || notification.type === 'due_date'
+                              : notification.type === 'overdue' || notification.type === 'due_soon'
                               ? 'badge-danger'
+                              : notification.type === 'activity_change'
+                              ? 'badge-blue'
                               : 'badge-gray'
                           }`}>
                             {getTypeLabel(notification.type)}

@@ -1,168 +1,119 @@
 import cron from 'node-cron';
-import { TaskModel } from '../models/Task';
 import { NotificationModel } from '../models/Notification';
+import { TaskModel } from '../models/Task';
+import scheduleService from './scheduleService';
+import { v4 as uuidv4 } from 'uuid';
 
-export class NotificationService {
-  private static instance: NotificationService;
-  private isRunning = false;
+let currentActivity: any = null;
 
-  private constructor() {}
-
-  static getInstance(): NotificationService {
-    if (!NotificationService.instance) {
-      NotificationService.instance = new NotificationService();
-    }
-    return NotificationService.instance;
-  }
-
-  start(): void {
-    if (this.isRunning) {
-      console.log('Notification service is already running');
-      return;
-    }
-
-    this.isRunning = true;
-    console.log('Starting notification service...');
-
-    // Check for overdue tasks every minute
-    cron.schedule('* * * * *', async () => {
-      await this.checkOverdueTasks();
-    });
-
-    // Check for reminders every minute
-    cron.schedule('* * * * *', async () => {
-      await this.checkReminders();
-    });
-
-    // Daily cleanup of old notifications (at 2 AM)
-    cron.schedule('0 2 * * *', async () => {
-      await this.cleanupOldNotifications();
-    });
-
-    console.log('Notification service started successfully');
-  }
-
-  stop(): void {
-    this.isRunning = false;
-    console.log('Notification service stopped');
-  }
-
-  private async checkOverdueTasks(): Promise<void> {
+export function startNotificationService() {
+  // Check for overdue tasks every hour
+  cron.schedule('0 * * * *', async () => {
     try {
+      console.log('🔍 Checking for overdue tasks...');
       const overdueTasks = await TaskModel.findOverdue();
       
       for (const task of overdueTasks) {
-        // Check if we already have an overdue notification for this task
-        const existingNotifications = await NotificationModel.findByTaskId(task.id);
-        const hasOverdueNotification = existingNotifications.some(
-          notification => notification.type === 'overdue'
-        );
-
-        if (!hasOverdueNotification) {
-          await NotificationModel.create({
-            taskId: task.id,
-            type: 'overdue',
-            message: `La tarea "${task.title}" está vencida desde ${new Date(task.dueDate!).toLocaleDateString()}`,
-            isRead: false
-          });
-
-          console.log(`Created overdue notification for task: ${task.title}`);
-        }
+        const notification = await NotificationModel.create({
+          taskId: task.id,
+          message: `La tarea "${task.title}" está vencida`,
+          type: 'overdue',
+          isRead: false
+        });
+        console.log(`📢 Created overdue notification for task: ${task.title}`);
       }
     } catch (error) {
       console.error('Error checking overdue tasks:', error);
     }
-  }
+  });
 
-  private async checkReminders(): Promise<void> {
+  // Check for tasks due soon (within 1 hour) every 15 minutes
+  cron.schedule('*/15 * * * *', async () => {
     try {
+      console.log('🔍 Checking for tasks due soon...');
       const tasksWithReminders = await TaskModel.findWithReminders();
       const now = new Date();
+      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
       
       for (const task of tasksWithReminders) {
-        if (task.reminderTime) {
-          const reminderTime = new Date(task.reminderTime);
-          const timeDiff = reminderTime.getTime() - now.getTime();
-          
-          // If reminder time is within the next minute and we haven't sent a reminder yet
-          if (timeDiff >= 0 && timeDiff <= 60000) {
-            const existingNotifications = await NotificationModel.findByTaskId(task.id);
-            const hasReminderNotification = existingNotifications.some(
-              notification => notification.type === 'reminder' && 
-              new Date(notification.createdAt).getTime() > now.getTime() - 60000
-            );
-
-            if (!hasReminderNotification) {
-              await NotificationModel.create({
-                taskId: task.id,
-                type: 'reminder',
-                message: `Recordatorio: La tarea "${task.title}" vence el ${new Date(task.dueDate!).toLocaleDateString()}`,
-                isRead: false
-              });
-
-              console.log(`Created reminder notification for task: ${task.title}`);
-            }
+        if (task.dueDate) {
+          const dueDate = new Date(task.dueDate);
+          if (dueDate <= oneHourFromNow && dueDate > now) {
+            const notification = await NotificationModel.create({
+              taskId: task.id,
+              message: `La tarea "${task.title}" vence en menos de 1 hora`,
+              type: 'due_soon',
+              isRead: false
+            });
+            console.log(`📢 Created due soon notification for task: ${task.title}`);
           }
         }
       }
     } catch (error) {
-      console.error('Error checking reminders:', error);
+      console.error('Error checking tasks due soon:', error);
     }
-  }
+  });
 
-  private async cleanupOldNotifications(): Promise<void> {
+  // Check for activity changes every minute
+  cron.schedule('* * * * *', async () => {
     try {
-      // Delete notifications older than 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const newCurrentActivity = await scheduleService.getCurrentActivity();
       
-      // This would require adding a cleanup method to the NotificationModel
-      // For now, we'll just log that cleanup would happen
-      console.log('Cleanup: Would delete notifications older than 30 days');
+      // If activity changed, create notification
+      if (newCurrentActivity && (!currentActivity || currentActivity.id !== newCurrentActivity.id)) {
+        if (currentActivity) {
+          // Create notification for activity change
+          const notification = await NotificationModel.create({
+            taskId: 'system', // Use a system task ID for schedule notifications
+            message: `Cambio de actividad: Ahora es tiempo de "${newCurrentActivity.activityName}"`,
+            type: 'activity_change',
+            isRead: false
+          });
+          console.log(`📢 Activity changed to: ${newCurrentActivity.activityName}`);
+        }
+        
+        currentActivity = newCurrentActivity;
+      } else if (!newCurrentActivity && currentActivity) {
+        // No current activity, but there was one before
+        const notification = await NotificationModel.create({
+          taskId: 'system',
+          message: `Actividad completada: "${currentActivity.activityName}"`,
+          type: 'activity_change',
+          isRead: false
+        });
+        console.log(`📢 Activity completed: ${currentActivity.activityName}`);
+        currentActivity = null;
+      }
     } catch (error) {
-      console.error('Error during notification cleanup:', error);
+      console.error('Error checking activity changes:', error);
     }
-  }
+  });
 
-  // Manual method to create a notification for a specific task
-  async createTaskNotification(taskId: string, type: 'reminder' | 'due_date' | 'overdue', message: string): Promise<void> {
+  // Generate recurring tasks from schedules every day at 6 AM
+  cron.schedule('0 6 * * *', async () => {
     try {
-      await NotificationModel.create({
-        taskId,
-        type,
-        message,
-        isRead: false
-      });
-      console.log(`Created ${type} notification for task ${taskId}`);
-    } catch (error) {
-      console.error('Error creating task notification:', error);
-    }
-  }
-
-  // Method to get notification statistics
-  async getNotificationStats(): Promise<{ total: number; unread: number; overdue: number; reminders: number }> {
-    try {
-      const count = await NotificationModel.getCount();
-      const unreadNotifications = await NotificationModel.findUnread();
+      console.log('🔍 Generating recurring tasks from schedules...');
+      const activeSchedules = await scheduleService.getActiveSchedules();
       
-      const overdueCount = unreadNotifications.filter(n => n.type === 'overdue').length;
-      const reminderCount = unreadNotifications.filter(n => n.type === 'reminder').length;
-
-      return {
-        total: count.total,
-        unread: count.unread,
-        overdue: overdueCount,
-        reminders: reminderCount
-      };
+      for (const schedule of activeSchedules) {
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 7); // Generate for next week
+        
+        const generatedTasks = await scheduleService.generateTasksFromSchedule(
+          schedule.id,
+          startDate,
+          endDate
+        );
+        
+        if (generatedTasks.length > 0) {
+          console.log(`📅 Generated ${generatedTasks.length} tasks from schedule: ${schedule.name}`);
+        }
+      }
     } catch (error) {
-      console.error('Error getting notification stats:', error);
-      return { total: 0, unread: 0, overdue: 0, reminders: 0 };
+      console.error('Error generating recurring tasks:', error);
     }
-  }
-}
+  });
 
-// Export a function to start the notification service
-export function startNotificationService(): void {
-  const service = NotificationService.getInstance();
-  service.start();
+  console.log('🔔 Notification service started with schedule monitoring');
 } 
