@@ -1,22 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, Plus, Edit, Settings } from 'lucide-react';
+import { activityApi } from '../services/activityApi';
 import { scheduleApi } from '../services/scheduleApi';
-import { WeeklySchedule, ScheduleSlot, ScheduleStats } from '../types';
+import { WeeklySchedule, Activity, ScheduleStats } from '../types';
 import CreateScheduleModal from '../components/CreateScheduleModal';
-import CreateSlotModal from '../components/CreateSlotModal';
-import EditSlotModal from '../components/EditSlotModal';
+import CreateActivityModal from '../components/CreateActivityModal';
+import EditActivityModal from '../components/EditActivityModal';
 import toast from 'react-hot-toast';
 
 const Schedules: React.FC = () => {
   const [schedules, setSchedules] = useState<WeeklySchedule[]>([]);
   const [selectedSchedule, setSelectedSchedule] = useState<WeeklySchedule | null>(null);
-  const [slots, setSlots] = useState<ScheduleSlot[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [stats, setStats] = useState<ScheduleStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showSlotModal, setShowSlotModal] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<ScheduleSlot | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   const timeSlots = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
@@ -33,7 +34,7 @@ const Schedules: React.FC = () => {
         setSchedules(schedulesResponse.data || []);
         if (schedulesResponse.data && schedulesResponse.data.length > 0) {
           setSelectedSchedule(schedulesResponse.data[0]);
-          await loadSlots(schedulesResponse.data[0].id);
+          await loadActivities(schedulesResponse.data[0].id);
         }
       }
 
@@ -52,55 +53,55 @@ const Schedules: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const loadSlots = async (scheduleId: string) => {
+  const loadActivities = async (scheduleId: string) => {
     try {
-      const response = await scheduleApi.getSlotsByScheduleId(scheduleId);
+      const response = await activityApi.getActivitiesBySchedule(scheduleId);
       if (response.success) {
-        setSlots(response.data || []);
+        setActivities(response.data || []);
       }
     } catch (error) {
-      console.error('Error loading slots:', error);
+      console.error('Error loading activities:', error);
       toast.error('Error al cargar las actividades');
     }
   };
 
   const handleScheduleChange = async (schedule: WeeklySchedule) => {
     setSelectedSchedule(schedule);
-    await loadSlots(schedule.id);
+    await loadActivities(schedule.id);
   };
 
   const handleScheduleCreated = () => {
     loadData();
   };
 
-  const handleSlotCreated = () => {
+  const handleActivityCreated = () => {
     if (selectedSchedule) {
-      loadSlots(selectedSchedule.id);
+      loadActivities(selectedSchedule.id);
     }
   };
 
-  const handleSlotUpdated = () => {
+  const handleActivityUpdated = () => {
     if (selectedSchedule) {
-      loadSlots(selectedSchedule.id);
+      loadActivities(selectedSchedule.id);
     }
   };
 
-  const handleSlotDeleted = () => {
+  const handleActivityDeleted = () => {
     if (selectedSchedule) {
-      loadSlots(selectedSchedule.id);
+      loadActivities(selectedSchedule.id);
     }
   };
 
-  const handleEditSlot = (slot: ScheduleSlot) => {
-    setSelectedSlot(slot);
+  const handleEditActivity = (activity: Activity) => {
+    setSelectedActivity(activity);
     setShowEditModal(true);
   };
 
-  const getSlotsForDayAndTime = (dayOfWeek: number, time: string) => {
-    return slots.filter(slot => 
-      slot.dayOfWeek === dayOfWeek && 
-      slot.startTime <= time && 
-      slot.endTime > time
+  const getActivitiesForDayAndTime = (dayOfWeek: number, time: string) => {
+    return activities.filter(activity => 
+      activity.daysOfWeek.includes(dayOfWeek) && 
+      activity.startTime <= time && 
+      activity.endTime > time
     );
   };
 
@@ -109,10 +110,10 @@ const Schedules: React.FC = () => {
     const currentDay = now.getDay();
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     
-    return slots.find(slot => 
-      slot.dayOfWeek === currentDay && 
-      slot.startTime <= currentTime && 
-      slot.endTime > currentTime
+    return activities.find(activity => 
+      activity.daysOfWeek.includes(currentDay) && 
+      activity.startTime <= currentTime && 
+      activity.endTime > currentTime
     );
   };
 
@@ -194,7 +195,7 @@ const Schedules: React.FC = () => {
                 <Settings className="h-8 w-8 text-blue-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-blue-600">Actividad Actual</p>
-                  <p className="text-lg font-semibold text-blue-900">{stats.currentActivity.activityName}</p>
+                  <p className="text-lg font-semibold text-blue-900">{stats.currentActivity.name}</p>
                 </div>
               </div>
             </div>
@@ -238,7 +239,7 @@ const Schedules: React.FC = () => {
             </h2>
             <div className="flex space-x-2">
               <button
-                onClick={() => setShowSlotModal(true)}
+                onClick={() => setShowActivityModal(true)}
                 className="btn-secondary"
               >
                 <Plus size={16} className="mr-2" />
@@ -274,7 +275,7 @@ const Schedules: React.FC = () => {
                     {formatTime(time)}
                   </div>
                   {daysOfWeek.map((_, dayIndex) => {
-                    const daySlots = getSlotsForDayAndTime(dayIndex, time);
+                    const dayActivities = getActivitiesForDayAndTime(dayIndex, time);
                     const currentActivity = getCurrentActivity();
                     
                     return (
@@ -282,24 +283,24 @@ const Schedules: React.FC = () => {
                         key={`${dayIndex}-${time}`}
                         className="h-16 border border-gray-200 rounded-lg p-1 relative"
                       >
-                        {daySlots.map(slot => (
+                        {dayActivities.map(activity => (
                           <div
-                            key={slot.id}
+                            key={activity.id}
                             className={`absolute inset-1 rounded text-xs p-1 border cursor-pointer transition-all hover:shadow-md ${
-                              getPriorityColor(slot.priority)
+                              getPriorityColor(activity.priority)
                             } ${
-                              currentActivity?.id === slot.id ? 'ring-2 ring-blue-500' : ''
+                              currentActivity?.id === activity.id ? 'ring-2 ring-blue-500' : ''
                             }`}
                             style={{
-                              top: `${((parseInt(slot.startTime.split(':')[1]) / 60) * 100)}%`,
-                              height: `${((parseInt(slot.endTime.split(':')[1]) - parseInt(slot.startTime.split(':')[1])) / 60) * 100}%`
+                              top: `${((parseInt(activity.startTime.split(':')[1]) / 60) * 100)}%`,
+                              height: `${((parseInt(activity.endTime.split(':')[1]) - parseInt(activity.startTime.split(':')[1])) / 60) * 100}%`
                             }}
-                            onClick={() => handleEditSlot(slot)}
-                            title={`${slot.activityName} - ${slot.startTime} a ${slot.endTime}`}
+                            onClick={() => handleEditActivity(activity)}
+                            title={`${activity.name} - ${activity.startTime} a ${activity.endTime}`}
                           >
-                            <div className="font-medium truncate">{slot.activityName}</div>
-                            {slot.isRecurring && (
-                              <div className="text-xs opacity-75">🔄 {slot.recurrencePattern}</div>
+                            <div className="font-medium truncate">{activity.name}</div>
+                            {activity.isRecurring && (
+                              <div className="text-xs opacity-75">🔄 {activity.recurrencePattern}</div>
                             )}
                             <div className="absolute top-0 right-0 opacity-0 hover:opacity-100 transition-opacity">
                               <Edit size={10} className="text-gray-600" />
@@ -342,23 +343,23 @@ const Schedules: React.FC = () => {
       />
 
       {selectedSchedule && (
-        <CreateSlotModal
-          isOpen={showSlotModal}
-          onClose={() => setShowSlotModal(false)}
+        <CreateActivityModal
+          isOpen={showActivityModal}
+          onClose={() => setShowActivityModal(false)}
           scheduleId={selectedSchedule.id}
-          onSlotCreated={handleSlotCreated}
+          onActivityCreated={handleActivityCreated}
         />
       )}
 
-      <EditSlotModal
+      <EditActivityModal
         isOpen={showEditModal}
         onClose={() => {
           setShowEditModal(false);
-          setSelectedSlot(null);
+          setSelectedActivity(null);
         }}
-        slot={selectedSlot}
-        onSlotUpdated={handleSlotUpdated}
-        onSlotDeleted={handleSlotDeleted}
+        activity={selectedActivity}
+        onActivityUpdated={handleActivityUpdated}
+        onActivityDeleted={handleActivityDeleted}
       />
     </div>
   );

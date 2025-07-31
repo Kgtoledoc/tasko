@@ -32,6 +32,24 @@ export interface WeeklySchedule {
   updatedAt: string;
 }
 
+// New Activity interface (replaces ScheduleSlot for the new system)
+export interface Activity {
+  id: string;
+  scheduleId: string;
+  name: string;
+  description?: string;
+  startTime: string; // HH:MM format
+  endTime: string; // HH:MM format
+  priority: 'low' | 'medium' | 'high';
+  color?: string;
+  isRecurring: boolean;
+  recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+  daysOfWeek: number[]; // Array of day numbers [0,1,2,3,4,5,6]
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Keep ScheduleSlot for backward compatibility
 export interface ScheduleSlot {
   id: string;
   scheduleId: string;
@@ -88,6 +106,31 @@ export interface CreateScheduleRequest {
   isActive?: boolean;
 }
 
+export interface CreateActivityRequest {
+  scheduleId: string;
+  name: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  priority?: 'low' | 'medium' | 'high';
+  color?: string;
+  isRecurring?: boolean;
+  recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+  daysOfWeek: number[];
+}
+
+export interface UpdateActivityRequest {
+  name?: string;
+  description?: string;
+  startTime?: string;
+  endTime?: string;
+  priority?: 'low' | 'medium' | 'high';
+  color?: string;
+  isRecurring?: boolean;
+  recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+  daysOfWeek?: number[];
+}
+
 export interface CreateScheduleSlotRequest {
   scheduleId: string;
   dayOfWeek: number;
@@ -133,6 +176,6 @@ export interface ScheduleStats {
   totalSchedules: number;
   activeSchedules: number;
   totalSlots: number;
-  currentActivity?: ScheduleSlot;
-  nextActivity?: ScheduleSlot;
+  currentActivity?: Activity;
+  nextActivity?: Activity;
 } 

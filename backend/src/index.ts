@@ -8,6 +8,7 @@ import taskRoutes from './routes/tasks';
 import notificationRoutes from './routes/notifications';
 import aiRoutes from './routes/aiRoutes';
 import scheduleRoutes from './routes/schedules';
+import activityRoutes from './routes/activities';
 import { startNotificationService } from './services/notificationService';
 
 // Load environment variables
@@ -31,6 +32,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/schedules', scheduleRoutes);
+app.use('/api/activities', activityRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

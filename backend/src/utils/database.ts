@@ -43,6 +43,22 @@ export interface WeeklySchedule {
   updatedAt: string;
 }
 
+export interface Activity {
+  id: string;
+  scheduleId: string;
+  name: string;
+  description?: string;
+  startTime: string; // HH:MM format
+  endTime: string; // HH:MM format
+  priority: 'low' | 'medium' | 'high';
+  color?: string;
+  isRecurring: boolean;
+  recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+  daysOfWeek: string; // JSON array of day numbers [0,1,2,3,4,5,6]
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ScheduleSlot {
   id: string;
   scheduleId: string;
@@ -137,7 +153,34 @@ export function initializeDatabase(): Promise<void> {
         console.log('✅ Weekly schedules table created/verified');
       });
 
-      // Create schedule slots table
+      // Create activities table (new structure)
+      db.run(`
+        CREATE TABLE IF NOT EXISTS activities (
+          id TEXT PRIMARY KEY,
+          scheduleId TEXT NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT,
+          startTime TEXT NOT NULL,
+          endTime TEXT NOT NULL,
+          priority TEXT DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high')),
+          color TEXT,
+          isRecurring INTEGER DEFAULT 0,
+          recurrencePattern TEXT CHECK(recurrencePattern IN ('weekly', 'biweekly', 'monthly')),
+          daysOfWeek TEXT NOT NULL, -- JSON array of day numbers
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT NOT NULL,
+          FOREIGN KEY (scheduleId) REFERENCES weekly_schedules (id) ON DELETE CASCADE
+        )
+      `, (err: any) => {
+        if (err) {
+          console.error('Error creating activities table:', err);
+          reject(err);
+          return;
+        }
+        console.log('✅ Activities table created/verified');
+      });
+
+      // Create schedule slots table (keep for backward compatibility)
       db.run(`
         CREATE TABLE IF NOT EXISTS schedule_slots (
           id TEXT PRIMARY KEY,
