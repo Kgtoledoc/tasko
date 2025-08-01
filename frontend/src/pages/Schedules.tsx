@@ -122,6 +122,22 @@ const Schedules: React.FC = () => {
     return `${hours}:${minutes}`;
   };
 
+  // Helper function to calculate position and height for activities
+  const calculateActivityPosition = (startTime: string, endTime: string) => {
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    
+    // Convert to total minutes from start of day
+    const startTotalMinutes = startHour * 60 + startMinute;
+    const endTotalMinutes = endHour * 60 + endMinute;
+    
+    // Calculate position as percentage of day (24 hours = 1440 minutes)
+    const top = (startTotalMinutes / 1440) * 100;
+    const height = ((endTotalMinutes - startTotalMinutes) / 1440) * 100;
+    
+    return { top, height };
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800 border-red-200';
@@ -283,30 +299,36 @@ const Schedules: React.FC = () => {
                         key={`${dayIndex}-${time}`}
                         className="h-16 border border-gray-200 rounded-lg p-1 relative"
                       >
-                        {dayActivities.map(activity => (
-                          <div
-                            key={activity.id}
-                            className={`absolute inset-1 rounded text-xs p-1 border cursor-pointer transition-all hover:shadow-md ${
-                              getPriorityColor(activity.priority)
-                            } ${
-                              currentActivity?.id === activity.id ? 'ring-2 ring-blue-500' : ''
-                            }`}
-                            style={{
-                              top: `${((parseInt(activity.startTime.split(':')[1]) / 60) * 100)}%`,
-                              height: `${((parseInt(activity.endTime.split(':')[1]) - parseInt(activity.startTime.split(':')[1])) / 60) * 100}%`
-                            }}
-                            onClick={() => handleEditActivity(activity)}
-                            title={`${activity.name} - ${activity.startTime} a ${activity.endTime}`}
-                          >
-                            <div className="font-medium truncate">{activity.name}</div>
-                            {activity.isRecurring && (
-                              <div className="text-xs opacity-75">🔄 {activity.recurrencePattern}</div>
-                            )}
-                            <div className="absolute top-0 right-0 opacity-0 hover:opacity-100 transition-opacity">
-                              <Edit size={10} className="text-gray-600" />
+                        {dayActivities.map(activity => {
+                          const { top, height } = calculateActivityPosition(activity.startTime, activity.endTime);
+                          
+                          return (
+                            <div
+                              key={activity.id}
+                              className={`absolute rounded text-xs p-1 border cursor-pointer transition-all hover:shadow-md ${
+                                getPriorityColor(activity.priority)
+                              } ${
+                                currentActivity?.id === activity.id ? 'ring-2 ring-blue-500' : ''
+                              }`}
+                              style={{
+                                top: `${top}%`,
+                                height: `${height}%`,
+                                left: '2px',
+                                right: '2px'
+                              }}
+                              onClick={() => handleEditActivity(activity)}
+                              title={`${activity.name} - ${activity.startTime} a ${activity.endTime}`}
+                            >
+                              <div className="font-medium truncate">{activity.name}</div>
+                              {activity.isRecurring && (
+                                <div className="text-xs opacity-75">🔄 {activity.recurrencePattern}</div>
+                              )}
+                              <div className="absolute top-0 right-0 opacity-0 hover:opacity-100 transition-opacity">
+                                <Edit size={10} className="text-gray-600" />
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     );
                   })}
