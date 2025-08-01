@@ -27,6 +27,13 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`🌐 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  console.log('📦 Request body:', req.body);
+  next();
+});
+
 // Routes
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);

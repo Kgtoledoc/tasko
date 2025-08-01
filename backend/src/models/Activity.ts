@@ -134,7 +134,7 @@ export class ActivityModel {
           return;
         }
         // Return the updated activity
-        this.get('SELECT * FROM activities WHERE id = ?', [id], (err: any, row: any) => {
+        db.get('SELECT * FROM activities WHERE id = ?', [id], (err: any, row: any) => {
           if (err || !row) {
             resolve(null);
             return;

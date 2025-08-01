@@ -8,6 +8,8 @@ export class ActivityController {
     try {
       const { scheduleId, name, description, startTime, endTime, priority, color, isRecurring, recurrencePattern, daysOfWeek } = req.body;
 
+      console.log('Create activity request:', req.body);
+
       // Validate required fields
       if (!scheduleId || !name || !startTime || !endTime || !daysOfWeek) {
         return res.status(400).json({
@@ -64,7 +66,9 @@ export class ActivityController {
         daysOfWeek: JSON.stringify(daysOfWeek)
       };
 
+      console.log('Creating activity with data:', activityData);
       const activity = await ActivityModel.create(activityData);
+      console.log('Activity created successfully:', activity);
 
       res.status(201).json({
         success: true,
@@ -92,7 +96,9 @@ export class ActivityController {
         });
       }
 
+      console.log('Getting activities for schedule:', scheduleId);
       const activities = await ActivityModel.findByScheduleId(scheduleId);
+      console.log('Found activities:', activities);
 
       res.json({
         success: true,
@@ -103,6 +109,29 @@ export class ActivityController {
       });
     } catch (error) {
       console.error('Error getting activities by schedule:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  // Debug: Get all activities
+  static async getAllActivities(req: Request, res: Response) {
+    try {
+      console.log('Getting all activities');
+      const activities = await ActivityModel.findAll();
+      console.log('All activities:', activities);
+
+      res.json({
+        success: true,
+        data: activities.map(activity => ({
+          ...activity,
+          daysOfWeek: JSON.parse(activity.daysOfWeek)
+        }))
+      });
+    } catch (error) {
+      console.error('Error getting all activities:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error'
@@ -153,6 +182,8 @@ export class ActivityController {
       const { id } = req.params;
       const updates = req.body;
 
+      console.log('Update activity request:', { id, updates });
+
       if (!id) {
         return res.status(400).json({
           success: false,
@@ -196,15 +227,18 @@ export class ActivityController {
         updates.daysOfWeek = JSON.stringify(updates.daysOfWeek);
       }
 
+      console.log('Calling ActivityModel.update with:', { id, updates });
       const updatedActivity = await ActivityModel.update(id, updates);
 
       if (!updatedActivity) {
+        console.log('Activity not found for update');
         return res.status(404).json({
           success: false,
           message: 'Activity not found'
         });
       }
 
+      console.log('Activity updated successfully:', updatedActivity);
       res.json({
         success: true,
         data: {

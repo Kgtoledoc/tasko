@@ -9,8 +9,20 @@ import {
 export const activityApi = {
   // Create new activity
   createActivity: async (activityData: CreateActivityRequest): Promise<ApiResponse<Activity>> => {
-    const response = await api.post('/activities', activityData);
-    return response.data;
+    console.log('🚀 Creating activity with data:', activityData);
+    try {
+      const response = await api.post('/activities', activityData);
+      console.log('✅ Activity created successfully:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error creating activity:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw error;
+    }
   },
 
   // Get all activities for a schedule
@@ -27,8 +39,15 @@ export const activityApi = {
 
   // Update activity
   updateActivity: async (id: string, updates: UpdateActivityRequest): Promise<ApiResponse<Activity>> => {
-    const response = await api.put(`/activities/${id}`, updates);
-    return response.data;
+    console.log('Updating activity:', id, updates);
+    try {
+      const response = await api.put(`/activities/${id}`, updates);
+      console.log('Update response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating activity:', error);
+      throw error;
+    }
   },
 
   // Delete activity

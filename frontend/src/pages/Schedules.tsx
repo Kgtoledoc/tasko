@@ -53,14 +53,28 @@ const Schedules: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // Debug: Log activities and selected schedule
+  useEffect(() => {
+    console.log('🔍 Current state:', {
+      selectedSchedule: selectedSchedule?.id,
+      activitiesCount: activities.length,
+      activities: activities
+    });
+  }, [selectedSchedule, activities]);
+
   const loadActivities = async (scheduleId: string) => {
     try {
+      console.log('🔄 Loading activities for schedule:', scheduleId);
       const response = await activityApi.getActivitiesBySchedule(scheduleId);
+      console.log('📦 Activities response:', response);
       if (response.success) {
+        console.log('✅ Activities loaded:', response.data);
         setActivities(response.data || []);
+      } else {
+        console.error('❌ Error loading activities:', response.message);
       }
     } catch (error) {
-      console.error('Error loading activities:', error);
+      console.error('❌ Error loading activities:', error);
       toast.error('Error al cargar las actividades');
     }
   };
@@ -95,19 +109,12 @@ const Schedules: React.FC = () => {
   const handleEditActivity = (activity: Activity) => {
     setSelectedActivity(activity);
     setShowEditModal(true);
-  };
-
-  const getActivitiesForDayAndTime = (dayOfWeek: number, time: string) => {
-    return activities.filter(activity => 
-      activity.daysOfWeek.includes(dayOfWeek) && 
-      activity.startTime <= time && 
-      activity.endTime > time
-    );
+    console.log('📝 Edit activity:', activity);
   };
 
   const getCurrentActivity = () => {
     const now = new Date();
-    const currentDay = now.getDay();
+    const currentDay = now.getDay(); // 0 = Domingo, 1 = Lunes, etc.
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     
     return activities.find(activity => 
@@ -136,6 +143,15 @@ const Schedules: React.FC = () => {
     const height = ((endTotalMinutes - startTotalMinutes) / 1440) * 100;
     
     return { top, height };
+  };
+
+  // Get all activities for a specific day (not just for a specific time)
+  const getActivitiesForDay = (dayOfWeek: number) => {
+    const dayActivities = activities.filter(activity => 
+      activity.daysOfWeek.includes(dayOfWeek)
+    );
+    console.log(`📅 Activities for day ${dayOfWeek}:`, dayActivities);
+    return dayActivities;
   };
 
   const getPriorityColor = (priority: string) => {
@@ -262,6 +278,41 @@ const Schedules: React.FC = () => {
                 Agregar Actividad
               </button>
               <button
+                onClick={async () => {
+                  console.log('🧪 Creating test activity...');
+                  if (!selectedSchedule) {
+                    toast.error('Selecciona un horario primero');
+                    return;
+                  }
+                  
+                  try {
+                    const testActivity = {
+                      scheduleId: selectedSchedule.id,
+                      name: 'Actividad de Prueba',
+                      description: 'Esta es una actividad de prueba',
+                      startTime: '10:00',
+                      endTime: '11:00',
+                      priority: 'medium' as const,
+                      daysOfWeek: [1, 2, 3] // Lunes, Martes, Miércoles
+                    };
+                    
+                    const response = await activityApi.createActivity(testActivity);
+                    if (response.success) {
+                      toast.success('Actividad de prueba creada');
+                      loadActivities(selectedSchedule.id);
+                    } else {
+                      toast.error('Error al crear actividad de prueba');
+                    }
+                  } catch (error) {
+                    console.error('Error creating test activity:', error);
+                    toast.error('Error al crear actividad de prueba');
+                  }
+                }}
+                className="btn-secondary"
+              >
+                🧪 Test Activity
+              </button>
+              <button
                 onClick={() => {/* TODO: Edit schedule */}}
                 className="btn-secondary"
               >
@@ -284,56 +335,73 @@ const Schedules: React.FC = () => {
                 ))}
               </div>
 
-              {/* Time slots */}
-              {timeSlots.map(time => (
-                <div key={time} className="grid grid-cols-8 gap-1 mb-1">
-                  <div className="h-16 flex items-center justify-center text-xs text-gray-500 font-medium">
-                    {formatTime(time)}
-                  </div>
-                  {daysOfWeek.map((_, dayIndex) => {
-                    const dayActivities = getActivitiesForDayAndTime(dayIndex, time);
-                    const currentActivity = getCurrentActivity();
-                    
-                    return (
-                      <div
-                        key={`${dayIndex}-${time}`}
-                        className="h-16 border border-gray-200 rounded-lg p-1 relative"
-                      >
-                        {dayActivities.map(activity => {
-                          const { top, height } = calculateActivityPosition(activity.startTime, activity.endTime);
-                          
-                          return (
-                            <div
-                              key={activity.id}
-                              className={`absolute rounded text-xs p-1 border cursor-pointer transition-all hover:shadow-md ${
-                                getPriorityColor(activity.priority)
-                              } ${
-                                currentActivity?.id === activity.id ? 'ring-2 ring-blue-500' : ''
-                              }`}
-                              style={{
-                                top: `${top}%`,
-                                height: `${height}%`,
-                                left: '2px',
-                                right: '2px'
-                              }}
-                              onClick={() => handleEditActivity(activity)}
-                              title={`${activity.name} - ${activity.startTime} a ${activity.endTime}`}
-                            >
-                              <div className="font-medium truncate">{activity.name}</div>
-                              {activity.isRecurring && (
-                                <div className="text-xs opacity-75">🔄 {activity.recurrencePattern}</div>
-                              )}
-                              <div className="absolute top-0 right-0 opacity-0 hover:opacity-100 transition-opacity">
-                                <Edit size={10} className="text-gray-600" />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
+              {/* Calendar with activities as continuous bars */}
+              <div className="grid grid-cols-8 gap-1">
+                {/* Time labels column */}
+                <div className="relative">
+                  {timeSlots.map((time, index) => (
+                    <div
+                      key={time}
+                      className="h-16 flex items-center justify-center text-xs text-gray-500 font-medium border-b border-gray-200"
+                    >
+                      {formatTime(time)}
+                    </div>
+                  ))}
                 </div>
-              ))}
+
+                {/* Days columns */}
+                {daysOfWeek.map((dayName, dayIndex) => (
+                  <div key={dayIndex} className="relative">
+                    {/* Time grid for this day */}
+                    <div className="relative h-[1536px] border border-gray-200 rounded-lg"> {/* 24 hours * 64px per hour */}
+                      {/* Grid lines for each hour */}
+                      {timeSlots.map((time, index) => (
+                        <div
+                          key={time}
+                          className="absolute w-full border-b border-gray-100"
+                          style={{ top: `${index * 64}px`, height: '64px' }}
+                        />
+                      ))}
+
+                      {/* Activities for this day */}
+                      {getActivitiesForDay(dayIndex).map(activity => {
+                        const { top, height } = calculateActivityPosition(activity.startTime, activity.endTime);
+                        const currentActivity = getCurrentActivity();
+                        
+                        console.log(`📅 Day ${dayIndex} (${dayName}): Activity ${activity.name} with days:`, activity.daysOfWeek);
+                        
+                        return (
+                          <div
+                            key={activity.id}
+                            className={`absolute rounded text-xs p-1 border cursor-pointer transition-all hover:shadow-md ${
+                              getPriorityColor(activity.priority)
+                            } ${
+                              currentActivity?.id === activity.id ? 'ring-2 ring-blue-500' : ''
+                            }`}
+                            style={{
+                              top: `${top}%`,
+                              height: `${height}%`,
+                              left: '2px',
+                              right: '2px',
+                              zIndex: 10
+                            }}
+                            onClick={() => handleEditActivity(activity)}
+                            title={`${activity.name} - ${activity.startTime} a ${activity.endTime}`}
+                          >
+                            <div className="font-medium truncate">{activity.name}</div>
+                            {activity.isRecurring && (
+                              <div className="text-xs opacity-75">🔄 {activity.recurrencePattern}</div>
+                            )}
+                            <div className="absolute top-0 right-0 opacity-0 hover:opacity-100 transition-opacity">
+                              <Edit size={10} className="text-gray-600" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
